@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+.root {}
+
+.panel {
+   position: absolute;
+   top: 0;
+   left: 0;
+   right: 0;
+   bottom: 0;
+}
+
+.select {
+    background-color: lightGrey;
+}
+
+.border {
+   border: 1px solid;
+}
+
+</style>
+<body>
+</body>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script>
+
+var data = [{children: [{children: [], parent: undefined, is_leaf: true}]}];
+function root() { return data[0].children[0]; }
+var depth = 1;
+var clicked_child = root();
+var step = 5; // Resize step, % of screen space.
+
+function redraw() {
+    d3.select('.root').remove();
+    var root = d3.select('body')
+        .selectAll('.c')
+        .data(data)
+        .enter()
+        .append('div')
+        .attr('class', 'root panel')
+    readd(root,depth);
+}
+
+function readd(node, depth) {
+    if(depth == 0) {
+        return;
+    }
+    var new_node = node.selectAll('.c')
+        .data(function(d){
+            return d.children;
+        })
+        .enter()
+        .append('div')
+        .classed('panel',true)
+        .classed('border', function(d) {
+            return d.is_leaf;
+        })
+        .classed('select', function(d) {
+            return d.is_active;
+        })
+        .each(function(d) {
+            var v = d.size + '%';
+            d3.select(this)
+                .style(d.side,v)
+        })
+    new_node.on('click', select);
+    new_node.on('dblclick', parentselect);
+
+    readd(new_node, depth-1)
+}
+
+d3.select('body').on('keypress', function() {
+    var code = d3.event.keyCode;
+    if(code == 118) { // v
+        split_node('v');
+    } else if (code == 104) { // h
+        split_node('h');
+    } else if (code == 119) { // w
+        var p = clicked_child.parent;
+        if(!p) return;
+        var cs = p.children;
+        resize_panel(cs[0],cs[1]);
+    } else if (code == 115) { // s
+        var p = clicked_child.parent;
+        if(!p) return;
+        var cs = p.children;
+        resize_panel(cs[1],cs[0]);
+    } else if(code == 114) { // r
+        if(clicked_child.is_leaf) {
+            remove_node(clicked_child);
+        }
+    } else {
+        return;
+    }
+    redraw();
+})
+
+function resize_panel(c0,c1) {
+    if(c0.size - step > 0 && c1.size + step < 100) {
+        c0.size -= step;
+        c1.size += step;
+    }
+}
+
+function remove_node(c) {
+    var p = c.parent;
+    if(c.is_leaf && p.parent) {
+        var o = p.children[c.i^1]
+        if(o.children != 0 && p.parent) {
+            var pp = p.parent;
+            console.log(p.i)
+            pp.children[p.i] = o;
+            o.side = p.side;
+            o.size = p.size;
+            o.i = p.i;
+            o.parent = pp;
+        } else {
+            p.children = [];
+            p.is_leaf = true;
+            p.is_active = false;
+        }
+    }
+}
+
+function split_node(pos) {
+    // Only split children.
+    if(!clicked_child.is_leaf) return;
+
+    clicked_child.is_leaf = false;
+    clicked_child.is_active = false;
+    var side0 = pos == 'h' ? 'top' : 'left';
+    var side1 = pos == 'h' ? 'bottom' : 'right';
+    clicked_child.children.push({children: [], parent: clicked_child, pos: pos, is_leaf: true, size: 50, side: side0, is_active: true,  i: 0});
+    clicked_child.children.push({children: [], parent: clicked_child, pos: pos, is_leaf: true, size: 50, side: side1, is_active: false, i: 1});
+    console.log(clicked_child);
+    clicked_child = clicked_child.children[0];
+
+    // Stupid depth to end d3 recursive enter().
+    depth++;
+}
+
+function parentselect(d,i) {
+    if(!d.is_leaf) return;
+    clicked_child.is_active = false;
+    if(d.parent) {
+        clicked_child = d.parent;
+        clicked_child.is_active = true;
+    }
+    redraw();
+}
+
+function select(d){
+    if(!d.is_leaf) return;
+    clicked_child.is_active = false;
+    clicked_child = d;
+    clicked_child.is_active = true;
+    console.log(d);
+    redraw();
+}
+
+redraw();
+
+
+
+</script>
