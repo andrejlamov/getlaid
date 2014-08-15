@@ -26,18 +26,24 @@
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script>
 
-var data = [{children: [{children: [], parent: undefined, is_leaf: true}]}];
+var id = 0;
+function genid() { return 'p' + id++  };
+
+var data = [{children: [{children: [], parent: undefined, is_leaf: true, id: genid() }]}];
 function root() { return data[0].children[0]; }
 var depth = 1;
 var clicked_child = root();
 var step = 5; // Resize step, % of screen space.
 
 function redraw() {
-    d3.select('.root').remove();
+    //d3.select('.root').remove();
     var root = d3.select('body')
-        .selectAll('.c')
-        .data(data)
-        .enter()
+        .selectAll('.panel')
+        .data(data, function(d) {
+            return d.id;
+        })
+
+    root.enter()
         .append('div')
         .attr('class', 'root panel')
     readd(root,depth);
@@ -47,12 +53,24 @@ function readd(node, depth) {
     if(depth == 0) {
         return;
     }
-    var new_node = node.selectAll('.c')
+    var new_node = node.selectAll('.panel')
         .data(function(d){
             return d.children;
+        }, function(d) {
+            return d.id;
         })
-        .enter()
+    new_node.classed('border', function(d) {
+            return d.is_leaf;
+    })
+        .classed('select', function(d) {
+            return d.is_active;
+        });
+
+    new_node.enter()
         .append('div')
+        .attr('id', function(d) {
+     return d.id;
+   })
         .classed('panel',true)
         .classed('border', function(d) {
             return d.is_leaf;
@@ -60,7 +78,8 @@ function readd(node, depth) {
         .classed('select', function(d) {
             return d.is_active;
         })
-        .each(function(d) {
+
+    new_node.each(function(d) {
             var v = d.size + '%';
             d3.select(this)
                 .style(d.side,v)
@@ -75,29 +94,43 @@ d3.select('body').on('keypress', function() {
     var code = d3.event.keyCode;
     if(code == 118) { // v
         split_node('v');
+        redraw();
     } else if (code == 104) { // h
         split_node('h');
+        redraw();
     } else if (code == 119) { // w
         var p = clicked_child.parent;
         if(!p) return;
         var cs = p.children;
-        resize_panel(cs[0],cs[1]);
+        resize_node(cs[0],cs[1]);
+        resize_panel();
     } else if (code == 115) { // s
         var p = clicked_child.parent;
         if(!p) return;
         var cs = p.children;
-        resize_panel(cs[1],cs[0]);
+        resize_node(cs[1],cs[0]);
+        resize_panel();
     } else if(code == 114) { // r
         if(clicked_child.is_leaf) {
             remove_node(clicked_child);
+            d3.select('#'+clicked_child.id).remove();
+            redraw();
         }
-    } else {
-        return;
     }
-    redraw();
 })
 
-function resize_panel(c0,c1) {
+function resize_panel() {
+    d3.select('#'+clicked_child.parent.id)
+        .selectAll('.panel')
+        .each(function(d) {
+            console.log(d)
+            var v = d.size + '%';
+            d3.select(this)
+                .style(d.side,v)
+            })
+}
+
+function resize_node(c0,c1) {
     if(c0.size - step > 0 && c1.size + step < 100) {
         c0.size -= step;
         c1.size += step;
@@ -132,8 +165,16 @@ function split_node(pos) {
     clicked_child.is_active = false;
     var side0 = pos == 'h' ? 'top' : 'left';
     var side1 = pos == 'h' ? 'bottom' : 'right';
-    clicked_child.children.push({children: [], parent: clicked_child, pos: pos, is_leaf: true, size: 50, side: side0, is_active: true,  i: 0});
-    clicked_child.children.push({children: [], parent: clicked_child, pos: pos, is_leaf: true, size: 50, side: side1, is_active: false, i: 1});
+    clicked_child.children.push({children: [], parent: clicked_child, pos: pos,
+                                 is_leaf: true, size: 50, side: side0,
+                                 is_active: true,  i: 0, id: genid(),
+                                 visualize: function() {}
+                                });
+    clicked_child.children.push({children: [], parent: clicked_child, pos: pos,
+                                 is_leaf: true, size: 50, side: side1,
+                                 is_active: false, i: 1, id: genid(),
+                                 visualize: function(){}
+                                 });
     console.log(clicked_child);
     clicked_child = clicked_child.children[0];
 
