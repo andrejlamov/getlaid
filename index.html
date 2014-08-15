@@ -35,61 +35,6 @@ var depth = 1;
 var clicked_child = root();
 var step = 5; // Resize step, % of screen space.
 
-function redraw() {
-    //d3.select('.root').remove();
-    var root = d3.select('body')
-        .selectAll('.panel')
-        .data(data, function(d) {
-            return d.id;
-        })
-
-    root.enter()
-        .append('div')
-        .attr('class', 'root panel')
-    readd(root,depth);
-}
-
-function readd(node, depth) {
-    if(depth == 0) {
-        return;
-    }
-    var new_node = node.selectAll('.panel')
-        .data(function(d){
-            return d.children;
-        }, function(d) {
-            return d.id;
-        })
-    new_node.classed('border', function(d) {
-            return d.is_leaf;
-    })
-        .classed('select', function(d) {
-            return d.is_active;
-        });
-
-    new_node.enter()
-        .append('div')
-        .attr('id', function(d) {
-     return d.id;
-   })
-        .classed('panel',true)
-        .classed('border', function(d) {
-            return d.is_leaf;
-        })
-        .classed('select', function(d) {
-            return d.is_active;
-        })
-
-    new_node.each(function(d) {
-            var v = d.size + '%';
-            d3.select(this)
-                .style(d.side,v)
-        })
-    new_node.on('click', select);
-    new_node.on('dblclick', parentselect);
-
-    readd(new_node, depth-1)
-}
-
 d3.select('body').on('keypress', function() {
     var code = d3.event.keyCode;
     if(code == 118) { // v
@@ -119,14 +64,73 @@ d3.select('body').on('keypress', function() {
     }
 })
 
+function redraw() {
+    //d3.select('.root').remove();
+    var root = d3.select('body')
+        .selectAll('.panel')
+        .data(data, function(d) {
+            return d.id;
+        })
+
+    root.enter()
+        .append('div')
+        .attr('class', 'root panel')
+
+    readd(root);
+}
+
+function readd(node) {
+
+    if(node[0] == null) {
+        return;
+    }
+
+    var new_node = node.selectAll('.panel')
+        .data(function(d){
+            return d.children;
+        }, function(d) {
+            return d.id;
+        });
+
+    new_node.enter()
+        .append('div')
+        .attr('id', function(d) {
+     return d.id;
+        })
+        .classed('panel',true)
+        .classed('border', function(d) {
+            return d.is_leaf;
+        })
+        .classed('select', function(d) {
+            return d.is_active;
+        }),
+
+    new_node.classed('border', function(d) {
+            return d.is_leaf;
+    })
+        .classed('select', function(d) {
+            return d.is_active;
+        });
+
+    new_node.each(function(d) {
+            var v = d.size + '%';
+            d3.select(this)
+                .style(d.side,v)
+    });
+
+    new_node.on('click', select);
+    new_node.on('dblclick', parentselect);
+
+    readd(new_node);
+}
+
 function resize_panel() {
     d3.select('#'+clicked_child.parent.id)
         .selectAll('.panel')
         .each(function(d) {
-            console.log(d)
             var v = d.size + '%';
             d3.select(this)
-                .style(d.side,v)
+                .style(d.side,v);
             })
 }
 
@@ -143,7 +147,6 @@ function remove_node(c) {
         var o = p.children[c.i^1]
         if(o.children != 0 && p.parent) {
             var pp = p.parent;
-            console.log(p.i)
             pp.children[p.i] = o;
             o.side = p.side;
             o.size = p.size;
