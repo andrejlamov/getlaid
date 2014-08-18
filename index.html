@@ -24,6 +24,7 @@
 <body>
 </body>
 <script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="chart.js"></script>
 <script>
 
 var id = 0;
@@ -35,33 +36,42 @@ var clicked_child = root();
 var step = 5; // Resize step, % of screen space.
 
 d3.select('body').on('keypress', function() {
-    var code = d3.event.keyCode;
-    if(code == 118) { // v
-        split_node('v');
-        redraw();
-    } else if (code == 104) { // h
-        split_node('h');
-        redraw();
-    } else if (code == 119) { // w
-        var p = clicked_child.parent;
-        if(!p) return;
-        var cs = p.children;
-        resize_node(cs[0],cs[1]);
-        resize_panel();
-    } else if (code == 115) { // s
-        var p = clicked_child.parent;
-        if(!p) return;
-        var cs = p.children;
-        resize_node(cs[1],cs[0]);
-        resize_panel();
-    } else if(code == 114) { // r
-        if(clicked_child.is_leaf) {
-            remove_node(clicked_child);
-            d3.select('#'+clicked_child.id).remove();
-            redraw();
-        }
-    }
+   var code = d3.event.keyCode;
+   console.log(code)
+   if(code == 118) { // v
+     split_node('v');
+     redraw();
+   } else if (code == 104) { // h
+     split_node('h');
+     redraw();
+   } else if (code == 119) { // w
+     var p = clicked_child.parent;
+     if(!p) return;
+     var cs = p.children;
+     resize_node(cs[0],cs[1]);
+     resize_panel();
+     resize();
+   } else if (code == 115) { // s
+     var p = clicked_child.parent;
+     if(!p) return;
+     var cs = p.children;
+     resize_node(cs[1],cs[0]);
+     resize_panel();
+     resize();
+   } else if(code == 114) { // r
+     if(clicked_child.is_leaf) {
+       remove_node(clicked_child);
+       d3.select('#'+clicked_child.id).remove();
+       redraw();
+     }
+   } else if(code == 99) {
+     console.log(code)
+     addrect();
+     resize(root());
+   }
 })
+
+d3.select(document).on('resize', resize);
 
 function redraw() {
     var root = d3.select('body')
@@ -178,14 +188,12 @@ function split_node(pos) {
     clicked_child.children.push({children: [], parent: clicked_child, pos: pos,
                                  is_leaf: true, size: 50, side: side0,
                                  is_active: true,  i: 0, id: genid(),
-                                 regen_tree: false,
-                                 visualize: function() {}
+                                 regen_tree: false, chart:undefined
                                 });
     clicked_child.children.push({children: [], parent: clicked_child, pos: pos,
                                  is_leaf: true, size: 50, side: side1,
                                  is_active: false, i: 1, id: genid(),
-                                 regen_tree: false,
-                                 visualize: function(){}
+                                 regen_tree: false, chart:undefined
                                  });
     console.log(clicked_child);
     clicked_child = clicked_child.children[0];
@@ -208,6 +216,26 @@ function select(d){
     clicked_child.is_active = true;
     console.log(d);
     redraw();
+}
+
+function resize() {
+   resize0(root());
+}
+function resize0(node) {
+   var n = d3.select('#'+node.id);
+   var w = parseInt(n.style('width'));
+   var h = parseInt(n.style('height'));
+
+   if(node.chart != undefined) {
+     node.chart.resize(w,h);
+   }
+   if(node.children.length != 0) {
+     node.children.forEach(resize0);
+   }
+}
+
+function addrect() {
+   clicked_child.chart = new Chart(clicked_child.id);
 }
 
 redraw();
