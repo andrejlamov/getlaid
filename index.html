@@ -24,6 +24,7 @@
 <body>
 </body>
 <script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="./chart.js"></script>
 <script>
 
 var id = 0;
@@ -31,7 +32,6 @@ function genid() { return 'p' + id++  };
 
 var data = [{children: [{children: [], parent: undefined, is_leaf: true, id: genid() }]}];
 function root() { return data[0].children[0]; }
-var depth = 1;
 var clicked_child = root();
 var step = 5; // Resize step, % of screen space.
 
@@ -39,33 +39,45 @@ d3.select('body').on('keypress', function() {
     var code = d3.event.keyCode;
     if(code == 118) { // v
         split_node('v');
-        redraw();
+        readd();
     } else if (code == 104) { // h
         split_node('h');
-        redraw();
+        readd();
     } else if (code == 119) { // w
         var p = clicked_child.parent;
         if(!p) return;
         var cs = p.children;
         resize_node(cs[0],cs[1]);
         resize_panel();
+        resize_chart()
     } else if (code == 115) { // s
         var p = clicked_child.parent;
         if(!p) return;
         var cs = p.children;
         resize_node(cs[1],cs[0]);
         resize_panel();
+        resize_chart();
     } else if(code == 114) { // r
         if(clicked_child.is_leaf) {
             remove_node(clicked_child);
             d3.select('#'+clicked_child.id).remove();
-            redraw();
+            readd();
         }
+    } else if(code == 99) {
+        if(clicked_child.chart) {
+            d3.select('#c'+clicked_child.id).remove();
+        }
+        clicked_child.chart = new Chart(clicked_child.id);
+        resize_chart();
     }
 })
 
-function redraw() {
-    //d3.select('.root').remove();
+d3.select(document).on('resize', function(){
+    resize_chart();
+})
+
+function readd() {
+    d3.select('.root').remove();
     var root = d3.select('body')
         .selectAll('.panel')
         .data(data, function(d) {
@@ -76,10 +88,11 @@ function redraw() {
         .append('div')
         .attr('class', 'root panel')
 
-    readd(root);
+    readd0(root);
+    resize_chart();
 }
 
-function readd(node) {
+function readd0(node) {
 
     if(node[0] == null) {
         return;
@@ -113,15 +126,19 @@ function readd(node) {
         });
 
     new_node.each(function(d) {
-            var v = d.size + '%';
-            d3.select(this)
-                .style(d.side,v)
+        var v = d.size + '%';
+        d3.select(this)
+            .style(d.side,v);
+
+        if(d.chart) {
+            d.chart.create(d.id);
+        }
     });
 
     new_node.on('click', select);
     new_node.on('dblclick', parentselect);
 
-    readd(new_node);
+    readd0(new_node);
 }
 
 function resize_panel() {
@@ -144,18 +161,20 @@ function resize_node(c0,c1) {
 function remove_node(c) {
     var p = c.parent;
     if(c.is_leaf && p.parent) {
-        var o = p.children[c.i^1]
+        var o = p.children[c.idx^1]
         if(o.children != 0 && p.parent) {
             var pp = p.parent;
-            pp.children[p.i] = o;
+            pp.children[p.idx] = o;
             o.side = p.side;
             o.size = p.size;
-            o.i = p.i;
+            o.idx = p.idx;
             o.parent = pp;
         } else {
             p.children = [];
             p.is_leaf = true;
             p.is_active = false;
+            p.chart = o.chart;
+            p.id = o.id;
         }
     }
 }
@@ -168,44 +187,66 @@ function split_node(pos) {
     clicked_child.is_active = false;
     var side0 = pos == 'h' ? 'top' : 'left';
     var side1 = pos == 'h' ? 'bottom' : 'right';
-    clicked_child.children.push({children: [], parent: clicked_child, pos: pos,
-                                 is_leaf: true, size: 50, side: side0,
-                                 is_active: true,  i: 0, id: genid(),
-                                 visualize: function() {}
-                                });
-    clicked_child.children.push({children: [], parent: clicked_child, pos: pos,
-                                 is_leaf: true, size: 50, side: side1,
-                                 is_active: false, i: 1, id: genid(),
-                                 visualize: function(){}
-                                 });
-    console.log(clicked_child);
-    clicked_child = clicked_child.children[0];
+    d3.select('#c' + clicked_child.id).remove();
+    var chart = clicked_child.chart;
+    clicked_child.chart = undefined;
 
-    // Stupid depth to end d3 recursive enter().
-    depth++;
+    function newchild(idx, side, active, chart) {
+        return {children: [], parent: clicked_child, pos: pos,
+                is_leaf: true, size: 50, side: side,
+                is_active: active,  idx: idx, id: genid(),
+                chart: chart
+               };
+    }
+    var child0 = newchild(0, side0, true, undefined);
+    var child1 = newchild(1, side1, false, chart);
+    clicked_child.children.push(child0);
+    clicked_child.children.push(child1);
+
+    if(child0.chart) {
+        child0.chart.create(child0.id);
+    }
+    clicked_child = child0;
 }
 
-function parentselect(d,i) {
+function parentselect(d) {
     if(!d.is_leaf) return;
     clicked_child.is_active = false;
     if(d.parent) {
         clicked_child = d.parent;
         clicked_child.is_active = true;
     }
-    redraw();
+    mark_selected();
 }
 
-function select(d){
-    if(!d.is_leaf) return;
+function select(n){
+    if(!n.is_leaf) return;
+    console.log(n);
     clicked_child.is_active = false;
-    clicked_child = d;
+    clicked_child = n;
     clicked_child.is_active = true;
-    console.log(d);
-    redraw();
+    mark_selected();
 }
 
-redraw();
+function mark_selected() {
+    d3.selectAll('.panel')
+        .classed('select', function(d) {
+            return d.is_active;
+        })
+}
 
+function resize_chart() {
+    d3.selectAll('.panel')
+        .each(function(d) {
+            if(d.chart) {
+                var p = d3.select(this);
+                var w = parseInt(p.style('width'));
+                var h = parseInt(p.style('height'));
+                d.chart.resize(w,h);
+            }
+        })
+}
 
+readd();
 
 </script>
