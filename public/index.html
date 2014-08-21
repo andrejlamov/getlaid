@@ -2,30 +2,66 @@
 <meta charset="utf-8">
 <style>
 
-.root {}
+ .root {}
 
-.panel {
+ .panel {
    position: absolute;
    top: 0;
    left: 0;
    right: 0;
    bottom: 0;
-}
+ }
 
-.select {
-    background-color: lightGrey;
-}
+ .select {
+   background-color: lightGrey;
+ }
 
-.border {
+ .border {
    border: 1px solid;
-}
+ }
+
+ .chartModalDialog {
+   position: fixed;
+   top: 0;
+   right: 0;
+   bottom: 0;
+   left: 0;
+   background: lightGrey;
+   z-index: 99999;
+   opacity:0;
+   pointer-events: none;
+ }
+
+ .chartModalDialog:target {
+   opacity:0.8;
+   pointer-events: auto;
+ }
+
+ .chartModalDialog > div {
+   width: 400px;
+   position: relative;
+   margin: 10% auto;
+   padding: 5px 20px 13px 20px;
+   border-radius: 5px;
+   background: white;
+ }
 
 </style>
 <body>
+  <div id="chartModal" class="chartModalDialog">
+    <div>
+      <select id="chartselection"></select>
+      <a href="#main" title="Add" id="addChart">Add</a>
+      <a href="#main" title="Clear" id="clearChart">Clear</a>
+      <a href="#main" title="Close">Close</a>
+    </div>
+  </div>
 </body>
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script src="./chart.js"></script>
 <script>
+
+location.href = '#main';
 
 var id = 0;
 function genid() { return 'p' + id++  };
@@ -63,12 +99,10 @@ d3.select('body').on('keypress', function() {
             d3.select('#'+clicked_child.id).remove();
             readd();
         }
-    } else if(code == 99) {
-        if(clicked_child.chart) {
-            d3.select('#c'+clicked_child.id).remove();
+    } else if(code == 99) { // c
+        if(clicked_child.is_leaf){
+            location.hash = '#chartModal';
         }
-        clicked_child.chart = new Chart(clicked_child.id);
-        resize_chart();
     }
 })
 
@@ -76,6 +110,38 @@ d3.select(document).on('resize', function(){
     resize_chart();
 })
 
+var charts = { rect: Chart};
+var active_charts = {}
+d3.select('#chartselection')
+    .selectAll('alternatives')
+    .data(d3.map(charts).keys())
+    .enter()
+    .append('option')
+    .attr('value', function(d) {
+        return d;
+    }).text(function(d) {
+        return d;
+    })
+
+
+d3.select('#addChart')
+    .on('click', function(){
+        if(!(clicked_child.id in active_charts)){
+            var name = d3.select('#chartselection').text();
+            active_charts[clicked_child.id] = new charts[name](clicked_child.id);
+            resize_chart();
+        }
+    });
+
+d3.select('#clearChart')
+    .on('click', function(){
+        if(clicked_child.id in active_charts){
+            d3.select('#c'+clicked_child.id).remove();
+            delete active_charts[clicked_child.id];
+        }
+    })
+
+readd();
 function readd() {
     d3.select('.root').remove();
     var root = d3.select('body')
@@ -108,7 +174,7 @@ function readd0(node) {
     new_node.enter()
         .append('div')
         .attr('id', function(d) {
-     return d.id;
+            return d.id;
         })
         .classed('panel',true)
         .classed('border', function(d) {
@@ -119,7 +185,7 @@ function readd0(node) {
         }),
 
     new_node.classed('border', function(d) {
-            return d.is_leaf;
+        return d.is_leaf;
     })
         .classed('select', function(d) {
             return d.is_active;
@@ -130,8 +196,8 @@ function readd0(node) {
         d3.select(this)
             .style(d.side,v);
 
-        if(d.chart) {
-            d.chart.create(d.id);
+        if(d.id in active_charts) {
+            active_charts[d.id].create(d.id);
         }
     });
 
@@ -148,8 +214,8 @@ function resize_panel() {
             var v = d.size + '%';
             d3.select(this)
                 .style(d.side,v);
-            })
-}
+        })
+            }
 
 function resize_node(c0,c1) {
     if(c0.size - step > 0 && c1.size + step < 100) {
@@ -173,7 +239,6 @@ function remove_node(c) {
             p.children = [];
             p.is_leaf = true;
             p.is_active = false;
-            p.chart = o.chart;
             p.id = o.id;
         }
     }
@@ -188,23 +253,27 @@ function split_node(pos) {
     var side0 = pos == 'h' ? 'top' : 'left';
     var side1 = pos == 'h' ? 'bottom' : 'right';
     d3.select('#c' + clicked_child.id).remove();
-    var chart = clicked_child.chart;
-    clicked_child.chart = undefined;
 
-    function newchild(idx, side, active, chart) {
+    function newchild(idx, side, active) {
         return {children: [], parent: clicked_child, pos: pos,
                 is_leaf: true, size: 50, side: side,
-                is_active: active,  idx: idx, id: genid(),
-                chart: chart
+                is_active: active,  idx: idx, id: genid()
                };
     }
-    var child0 = newchild(0, side0, true, undefined);
-    var child1 = newchild(1, side1, false, chart);
+    var child0 = newchild(0, side0, true);
+
+    if(clicked_child.id in active_charts) {
+        var chart = active_charts[clicked_child.id];
+        active_charts[child0.id] = chart;
+        delete active_charts[clicked_child.id];
+    }
+
+    var child1 = newchild(1, side1, false);
     clicked_child.children.push(child0);
     clicked_child.children.push(child1);
 
-    if(child0.chart) {
-        child0.chart.create(child0.id);
+    if(child0.id in active_charts) {
+        active_charts[child0.id].create(child0.id);
     }
     clicked_child = child0;
 }
@@ -238,15 +307,13 @@ function mark_selected() {
 function resize_chart() {
     d3.selectAll('.panel')
         .each(function(d) {
-            if(d.chart) {
+            if(d.id in active_charts) {
                 var p = d3.select(this);
                 var w = parseInt(p.style('width'));
                 var h = parseInt(p.style('height'));
-                d.chart.resize(w,h);
+                active_charts[d.id].resize(w,h);
             }
         })
-}
-
-readd();
+            }
 
 </script>

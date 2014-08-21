@@ -20,6 +20,5 @@ Chart.prototype.resize = function(width, height) {
   .attr({
     width: width,
     height: height
-
   })
 }
