@@ -270,7 +270,6 @@ function parentselect(d) {
 
 function select(n){
     if(!n.is_leaf) return;
-    console.log(n);
     clicked_child.is_active = false;
     clicked_child = n;
     clicked_child.is_active = true;
@@ -330,7 +329,6 @@ d3.select('#clearChart')
 
 d3.select('#closeModal')
     .on('click', function(){
-        console.log('click')
         d3.select('#chartModal')
             .classed('activeModal', false)
     })
