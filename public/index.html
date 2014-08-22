@@ -13,7 +13,7 @@
  }
 
  .select {
-   background-color: lightGrey;
+   background-color: grey;
  }
 
  .border {
@@ -32,114 +32,46 @@
    pointer-events: none;
  }
 
- .chartModalDialog:target {
-   opacity:0.8;
+ .activeModal {
+   opacity:0.9;
    pointer-events: auto;
- }
-
- .chartModalDialog > div {
    width: 400px;
    position: relative;
-   margin: 10% auto;
+   margin: 5% auto;
    padding: 5px 20px 13px 20px;
    border-radius: 5px;
-   background: white;
+   background: lightGrey;
+   border: 1px solid
  }
 
 </style>
 <body>
-  <div id="chartModal" class="chartModalDialog">
+  <div id="chartModal" dragable="true" class="chartModalDialog">
     <div>
       <select id="chartselection"></select>
-      <a href="#main" title="Add" id="addChart">Add</a>
-      <a href="#main" title="Clear" id="clearChart">Clear</a>
-      <a href="#main" title="Close">Close</a>
+      <button id="addChart">Add</button>
+      <button id="clearChart">Clear</button>
+      <button id="closeModal">Close</button>
     </div>
   </div>
 </body>
 <script src="http://d3js.org/d3.v3.min.js"></script>
 <script src="./chart.js"></script>
 <script>
-
-location.href = '#main';
-
 var id = 0;
 function genid() { return 'p' + id++  };
 
 var data = [{children: [{children: [], parent: undefined, is_leaf: true, id: genid() }]}];
 function root() { return data[0].children[0]; }
+
 var clicked_child = root();
-var step = 5; // Resize step, % of screen space.
-
-d3.select('body').on('keypress', function() {
-    var code = d3.event.keyCode;
-    if(code == 118) { // v
-        split_node('v');
-        readd();
-    } else if (code == 104) { // h
-        split_node('h');
-        readd();
-    } else if (code == 119) { // w
-        var p = clicked_child.parent;
-        if(!p) return;
-        var cs = p.children;
-        resize_node(cs[0],cs[1]);
-        resize_panel();
-        resize_chart()
-    } else if (code == 115) { // s
-        var p = clicked_child.parent;
-        if(!p) return;
-        var cs = p.children;
-        resize_node(cs[1],cs[0]);
-        resize_panel();
-        resize_chart();
-    } else if(code == 114) { // r
-        if(clicked_child.is_leaf) {
-            remove_node(clicked_child);
-            d3.select('#'+clicked_child.id).remove();
-            readd();
-        }
-    } else if(code == 99) { // c
-        if(clicked_child.is_leaf){
-            location.hash = '#chartModal';
-        }
-    }
-})
-
-d3.select(document).on('resize', function(){
-    resize_chart();
-})
-
 var charts = { rect: Chart};
 var active_charts = {}
-d3.select('#chartselection')
-    .selectAll('alternatives')
-    .data(d3.map(charts).keys())
-    .enter()
-    .append('option')
-    .attr('value', function(d) {
-        return d;
-    }).text(function(d) {
-        return d;
-    })
+var step = 5; // Resize step, % of screen space.
 
-
-d3.select('#addChart')
-    .on('click', function(){
-        if(!(clicked_child.id in active_charts)){
-            var name = d3.select('#chartselection').text();
-            active_charts[clicked_child.id] = new charts[name](clicked_child.id);
-            resize_chart();
-        }
-    });
-
-d3.select('#clearChart')
-    .on('click', function(){
-        if(clicked_child.id in active_charts){
-            d3.select('#c'+clicked_child.id).remove();
-            delete active_charts[clicked_child.id];
-        }
-    })
+//
+// Build up tree
+//
 
 readd();
 function readd() {
@@ -206,6 +138,10 @@ function readd0(node) {
 
     readd0(new_node);
 }
+
+//
+// Modify panels
+//
 
 function resize_panel() {
     d3.select('#'+clicked_child.parent.id)
@@ -278,6 +214,50 @@ function split_node(pos) {
     clicked_child = child0;
 }
 
+//
+// Events
+//
+
+d3.select('body').on('keypress', function() {
+    var code = d3.event.keyCode;
+    if(code == 118) { // v
+        split_node('v');
+        readd();
+    } else if (code == 104) { // h
+        split_node('h');
+        readd();
+    } else if (code == 119) { // w
+        var p = clicked_child.parent;
+        if(!p) return;
+        var cs = p.children;
+        resize_node(cs[0],cs[1]);
+        resize_panel();
+        resize_chart()
+    } else if (code == 115) { // s
+        var p = clicked_child.parent;
+        if(!p) return;
+        var cs = p.children;
+        resize_node(cs[1],cs[0]);
+        resize_panel();
+        resize_chart();
+    } else if(code == 114) { // r
+        if(clicked_child.is_leaf) {
+            remove_node(clicked_child);
+            d3.select('#'+clicked_child.id).remove();
+            readd();
+        }
+    } else if(code == 99) { // c
+        if(clicked_child.is_leaf){
+            d3.select('#chartModal')
+                .classed('activeModal', true)
+        }
+    }
+})
+
+d3.select(window).on('resize', function(){
+    resize_chart();
+})
+
 function parentselect(d) {
     if(!d.is_leaf) return;
     clicked_child.is_active = false;
@@ -316,4 +296,42 @@ function resize_chart() {
         })
             }
 
+//
+// Modal to add charts to leafnodes
+//
+
+d3.select('#chartselection')
+    .selectAll('alternatives')
+    .data(d3.map(charts).keys())
+    .enter()
+    .append('option')
+    .attr('value', function(d) {
+        return d;
+    }).text(function(d) {
+        return d;
+    })
+
+d3.select('#addChart')
+    .on('click', function(){
+        if(!(clicked_child.id in active_charts)){
+            var name = d3.select('#chartselection').text();
+            active_charts[clicked_child.id] = new charts[name](clicked_child.id);
+            resize_chart();
+        }
+    });
+
+d3.select('#clearChart')
+    .on('click', function(){
+        if(clicked_child.id in active_charts){
+            d3.select('#c'+clicked_child.id).remove();
+            delete active_charts[clicked_child.id];
+        }
+    })
+
+d3.select('#closeModal')
+    .on('click', function(){
+        console.log('click')
+        d3.select('#chartModal')
+            .classed('activeModal', false)
+    })
 </script>
