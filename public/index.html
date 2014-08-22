@@ -62,9 +62,9 @@ var id = 0;
 function genid() { return 'p' + id++  };
 
 var data = [{children: [{children: [], parent: undefined, is_leaf: true, id: genid() }]}];
-function root() { return data[0].children[0]; }
+function root(data) { return data[0].children[0]; }
 
-var clicked_child = root();
+var clicked_child = root(data);
 var charts = { rect: Chart};
 var active_charts = {}
 var step = 5; // Resize step, % of screen space.
@@ -332,4 +332,32 @@ d3.select('#closeModal')
         d3.select('#chartModal')
             .classed('activeModal', false)
     })
+
+//
+// Serialize tree
+//
+
+function stringify() {
+    return JSON.stringify(data, function(k,v) {
+        // Parent is circular
+        return k == 'parent' ? undefined : v;
+    })
+}
+
+function parse(str) {
+    // Set parents again
+    var newdata = JSON.parse(str);
+    function set_parent(n) {
+        if(n.children.length == 0) return
+        else {
+            n.children.forEach(function(c){
+                c['parent'] = n;
+                set_parent(c);
+            })
+        }
+    }
+    set_parent(root(newdata));
+    return newdata;
+}
+
 </script>
