@@ -108,19 +108,19 @@ function getlaid(id){
         on_selected(function(selected, parent, grandparent){
             if(parent.children[selected.index^1].children == 0){
                 grandparent.children[parent.index] =
-                    {d: null, id: gen_id(), children: [],
+                    {d: null, id: gen_node_id(), children: [],
                      split: parent.split,size: parent.size };
-                parent.id = gen_id();
+                parent.id = gen_node_id();
             } else {
                 if(grandparent == undefined){
                     tree[0] = parent.children[selected.index^1];
-                    tree[0].size = gen_id();
+                    tree[0].size = gen_node_id();
                     tree[0].children.forEach(function(d){
                         d.d = null;
                     })
                 } else {
                     grandparent = parent.children[selected.index^1];
-                    grandparent = gen_id();
+                    grandparent = gen_node_id();
                     grandparent.children.forEach(function(d){
                         d.d = null;
                     })
@@ -133,9 +133,9 @@ function getlaid(id){
         on_selected(function(selected, parent, grandparent){
             if(selected.d != null){
                 selected.d = null;
-                var d0 = {d: null, id: gen_id(), children: [],
+                var d0 = {d: null, id: gen_node_id(), children: [],
                           split: split, size: {value: 50}};
-                var d1 = {d: null, id: gen_id(), children: [],
+                var d1 = {d: null, id: gen_node_id(), children: [],
                           split: split, size: {value: 50}};
                 selected.children = [d0,d1];
                 var sel = d3.select('.selected');

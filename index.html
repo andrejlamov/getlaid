@@ -9,21 +9,21 @@
   <script src='getlaid.js'></script>
   <script>
 
+var layout = getlaid('#container');
 var tree = [{d: null, id: 0,
              children: [
-                 {d: null, id: 1, children: [
-                     {d: null, id: 3, children: [], split: 'vertical', size: {value: 50}},
-                     {d: null, id: 5, children: [], split: 'vertical', size: {value: 50}}
+                 {d: null, id: layout.gen_node_id(), children: [
+                     {d: null, id: layout.gen_node_id(), children: [], split: 'vertical', size: {value: 50}},
+                     {d: null, id: layout.gen_node_id(), children: [], split: 'vertical', size: {value: 50}}
                  ], split: 'horizontal', size: {value: 50}},
-                 {d: null, id: 2, children: [
-                     {d: null, id: 3, children: [], split: 'horizontal', size: {value: 50}},
-                     {d: null, id: 5, children: [], split: 'horizontal', size: {value: 50}}
+                 {d: null, id: layout.gen_node_id(), children: [
+                     {d: null, id: layout.gen_node_id(), children: [], split: 'horizontal', size: {value: 50}},
+                     {d: null, id: layout.gen_node_id(), children: [], split: 'horizontal', size: {value: 50}}
                  ], split: 'horizontal', size: {value: 50}}
              ]
             }
            ];
 
-var layout = getlaid('#container');
 layout.update(tree);
 
 
