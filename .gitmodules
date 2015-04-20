@@ -1,3 +1,0 @@
-[submodule "gitstore"]
-	path = gitstore
-	url = git@github.com:andrejlamov/gitstore.git
